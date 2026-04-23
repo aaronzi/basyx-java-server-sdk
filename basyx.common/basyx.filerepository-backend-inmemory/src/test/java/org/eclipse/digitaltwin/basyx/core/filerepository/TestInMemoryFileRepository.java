@@ -24,7 +24,11 @@
  ******************************************************************************/
 package org.eclipse.digitaltwin.basyx.core.filerepository;
 
+import java.io.ByteArrayInputStream;
+import java.nio.file.Paths;
+
 import org.eclipse.digitaltwin.basyx.core.filerepository.backend.FileRepositoryTestSuite;
+import org.junit.Test;
 
 /**
  * Integration Test for InMemoryFileRepository
@@ -37,5 +41,22 @@ public class TestInMemoryFileRepository extends FileRepositoryTestSuite{
 	@Override
 	protected FileRepository getFileRepository() {
 		return new InMemoryFileRepository();
+	}
+
+	@Test(expected = SecurityException.class)
+	public void saveFileRejectsPathTraversal() {
+		FileRepository fileRepository = getFileRepository();
+		FileMetadata metadata = new FileMetadata("../../../../tmp/basyx-pwned.txt", "text/plain", new ByteArrayInputStream("test".getBytes()));
+
+		fileRepository.save(metadata);
+	}
+
+	@Test(expected = SecurityException.class)
+	public void saveFileRejectsAbsolutePath() {
+		FileRepository fileRepository = getFileRepository();
+		String absolutePath = Paths.get(System.getProperty("java.io.tmpdir"), "basyx-pwned.txt").toString();
+		FileMetadata metadata = new FileMetadata(absolutePath, "text/plain", new ByteArrayInputStream("test".getBytes()));
+
+		fileRepository.save(metadata);
 	}
 }

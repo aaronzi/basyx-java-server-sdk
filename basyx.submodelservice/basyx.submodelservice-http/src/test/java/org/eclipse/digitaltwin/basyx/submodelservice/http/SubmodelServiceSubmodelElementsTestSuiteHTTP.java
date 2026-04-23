@@ -589,6 +589,14 @@ public abstract class SubmodelServiceSubmodelElementsTestSuiteHTTP {
 	}
 
 	@Test
+	public void uploadFileWithPathTraversalFileName() throws IOException {
+		String maliciousFileName = "..%2F..%2F..%2F..%2Ftmp%2Fbasyx-pwned.txt";
+		CloseableHttpResponse submodelElementFileUploadResponse = uploadFileToSubmodelElement(DummySubmodelFactory.SUBMODEL_ELEMENT_FILE_ID_SHORT, maliciousFileName);
+
+		assertEquals(HttpStatus.BAD_REQUEST.value(), submodelElementFileUploadResponse.getCode());
+	}
+
+	@Test
 	public void deleteFile() throws FileNotFoundException, IOException {
 		uploadFileToSubmodelElement(DummySubmodelFactory.SUBMODEL_ELEMENT_FILE_ID_SHORT);
 
@@ -736,11 +744,14 @@ public abstract class SubmodelServiceSubmodelElementsTestSuiteHTTP {
 	}
 
 	private CloseableHttpResponse uploadFileToSubmodelElement(String submodelElementIdShort) throws IOException {
+		String fileName = DummySubmodelFactory.FILE_NAME;
+		return uploadFileToSubmodelElement(submodelElementIdShort, fileName);
+	}
+
+	private CloseableHttpResponse uploadFileToSubmodelElement(String submodelElementIdShort, String fileName) throws IOException {
 		CloseableHttpClient client = HttpClients.createDefault();
 
-		String fileName = DummySubmodelFactory.FILE_NAME;
-
-		java.io.File file = ResourceUtils.getFile("classpath:" + fileName);
+		java.io.File file = ResourceUtils.getFile("classpath:" + DummySubmodelFactory.FILE_NAME);
 
 		HttpPut putRequest = createPutRequestWithFile(submodelElementIdShort, fileName, file);
 

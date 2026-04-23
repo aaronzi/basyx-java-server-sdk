@@ -207,6 +207,11 @@ public class CrudSubmodelRepository implements SubmodelRepository {
 		return getService(submodelId).getFileByFilePath(filePath);
 	}
 
+	@Override
+	public String getOriginalFileNameByPath(String submodelId, String idShortPath) {
+		return getService(submodelId).getOriginalFileNameByPath(idShortPath);
+	}
+
 	private void initializeRemoteCollection(@NonNull Collection<Submodel> submodels) {
 		if (submodels.isEmpty())
 			return;

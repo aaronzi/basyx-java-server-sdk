@@ -221,6 +221,16 @@ public class CrudSubmodelService implements SubmodelService {
     public InputStream getFileByFilePath(String filePath) {
         return submodelFileOperations.getInputStream(filePath);
     }
+
+	@Override
+	public String getOriginalFileNameByPath(String idShortPath) {
+		SubmodelElement submodelElement = getSubmodelElement(idShortPath);
+
+		if (!(submodelElement instanceof org.eclipse.digitaltwin.aas4j.v3.model.File fileSubmodelElement))
+			throw new ElementNotAFileException(submodelElement.getIdShort());
+
+		return submodelFileOperations.getOriginalFileName(fileSubmodelElement.getValue());
+	}
     
     private void hostSubmodel(Submodel submodel) {
         this.backend.save(submodel);

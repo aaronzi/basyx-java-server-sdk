@@ -29,6 +29,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.UUID;
 
 import org.eclipse.digitaltwin.aas4j.v3.model.File;
 import org.eclipse.digitaltwin.aas4j.v3.model.SubmodelElement;
@@ -38,7 +39,6 @@ import org.eclipse.digitaltwin.basyx.core.exceptions.FileDoesNotExistException;
 import org.eclipse.digitaltwin.basyx.core.exceptions.FileHandlingException;
 import org.eclipse.digitaltwin.basyx.core.filerepository.FileMetadata;
 import org.eclipse.digitaltwin.basyx.core.filerepository.FileRepository;
-import org.eclipse.digitaltwin.basyx.http.Base64UrlEncodedIdentifier;
 import org.eclipse.digitaltwin.basyx.submodelservice.value.FileBlobValue;
 
 /**
@@ -78,9 +78,10 @@ public class SubmodelFileOperations  {
         if (fileRepository.exists(fileSmElement.getValue()))
             fileRepository.delete(fileSmElement.getValue());
 
-        String uniqueFileName = createUniqueFileName(submodelId, idShortPath, fileName);
+		String logicalFileName = validateLogicalFileName(fileName);
+		String uniqueFileName = createUniqueFileName(logicalFileName);
 
-        FileMetadata fileMetadata = new FileMetadata(uniqueFileName, contentType, inputStream);
+		FileMetadata fileMetadata = new FileMetadata(uniqueFileName, logicalFileName, contentType, inputStream);
 
         if (fileRepository.exists(fileMetadata.getFileName()))
             fileRepository.delete(fileMetadata.getFileName());
@@ -109,6 +110,10 @@ public class SubmodelFileOperations  {
 
 	public InputStream getInputStream(String filePath) throws FileDoesNotExistException{
 		return fileRepository.find(filePath);
+	}
+
+	public String getOriginalFileName(String filePath) {
+		return fileRepository.getOriginalFileName(filePath);
 	}
 
 	private static boolean isFileSubmodelElement(SubmodelElement submodelElement) {
@@ -146,8 +151,27 @@ public class SubmodelFileOperations  {
 		return fileSubmodelElement.getValue();
 	}
 
-	private static String createUniqueFileName(String submodelId, String idShortPath, String fileName) {
-		return Base64UrlEncodedIdentifier.encodeIdentifier(submodelId) + "-" + idShortPath.replace("/", "-") + "-" + fileName;
+	private static String createUniqueFileName(String logicalFileName) {
+		return UUID.randomUUID() + getFileExtension(logicalFileName);
+	}
+
+	private static String getFileExtension(String fileName) {
+		int extensionStart = fileName.lastIndexOf('.');
+
+		if (extensionStart <= 0 || extensionStart >= fileName.length() - 1)
+			return "";
+
+		return fileName.substring(extensionStart);
+	}
+
+	private static String validateLogicalFileName(String fileName) {
+		if (fileName == null || fileName.isBlank())
+			throw new IllegalArgumentException("File name must not be null or blank.");
+
+		if (fileName.contains("..") || fileName.contains("/") || fileName.contains("\\"))
+			throw new SecurityException("Path traversal attempt detected.");
+
+		return fileName.replace("\r", "_").replace("\n", "_").trim();
 	}
 
 	private static void throwIfSmElementIsNotAFile(SubmodelElement submodelElement) {

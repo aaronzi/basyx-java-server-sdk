@@ -37,6 +37,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.gridfs.GridFsTemplate;
 import org.springframework.stereotype.Component;
+import org.bson.Document;
 
 import com.mongodb.client.gridfs.model.GridFSFile;
 
@@ -50,6 +51,7 @@ import com.mongodb.client.gridfs.model.GridFSFile;
 public class MongoDBFileRepository implements FileRepository {
 
 	private static final String MONGO_FILENAME_FIELD = "filename";
+	private static final String MONGO_METADATA_ORIGINAL_FILENAME_FIELD = "originalFileName";
 
 	private GridFsTemplate gridFsTemplate;
 
@@ -72,7 +74,10 @@ public class MongoDBFileRepository implements FileRepository {
 		if (exists(fileMetadata.getFileName()))
 			throw new FileHandlingException("File '%s' already exists.".formatted(fileMetadata.getFileName()));
 
-		gridFsTemplate.store(fileMetadata.getFileContent(), fileMetadata.getFileName(), fileMetadata.getContentType());
+		Document metadata = new Document();
+		metadata.put(MONGO_METADATA_ORIGINAL_FILENAME_FIELD, fileMetadata.getOriginalFileName());
+
+		gridFsTemplate.store(fileMetadata.getFileContent(), fileMetadata.getFileName(), fileMetadata.getContentType(), metadata);
 
 		return fileMetadata.getFileName();
 	}
@@ -108,6 +113,21 @@ public class MongoDBFileRepository implements FileRepository {
 		GridFSFile gridFSFile = getFile(fileName);
 
 		return gridFSFile != null;
+	}
+
+	@Override
+	public String getOriginalFileName(String fileId) {
+		GridFSFile file = getFile(fileId);
+
+		if (file == null || file.getMetadata() == null)
+			return fileId;
+
+		String originalFileName = file.getMetadata().getString(MONGO_METADATA_ORIGINAL_FILENAME_FIELD);
+
+		if (originalFileName == null || originalFileName.isBlank())
+			return fileId;
+
+		return originalFileName;
 	}
 
 	private GridFSFile getFile(String mongoDBfileId) {

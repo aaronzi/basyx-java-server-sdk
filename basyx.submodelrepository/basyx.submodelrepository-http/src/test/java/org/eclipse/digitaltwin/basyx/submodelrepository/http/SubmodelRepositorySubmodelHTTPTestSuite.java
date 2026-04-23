@@ -340,6 +340,14 @@ public abstract class SubmodelRepositorySubmodelHTTPTestSuite {
 	}
 
 	@Test
+	public void uploadFileWithPathTraversalFileName() throws IOException {
+		String maliciousFileName = "..%2F..%2F..%2F..%2Ftmp%2Fbasyx-pwned.txt";
+		CloseableHttpResponse submodelElementFileUploadResponse = uploadFileToSubmodelElement(DummySubmodelFactory.SUBMODEL_FOR_FILE_TEST, DummySubmodelFactory.SUBMODEL_ELEMENT_FILE_ID_SHORT, maliciousFileName);
+
+		assertEquals(HttpStatus.BAD_REQUEST.value(), submodelElementFileUploadResponse.getCode());
+	}
+
+	@Test
 	public void deleteFile() throws FileNotFoundException, IOException {
 		uploadFileToSubmodelElement(DummySubmodelFactory.SUBMODEL_FOR_FILE_TEST, DummySubmodelFactory.SUBMODEL_ELEMENT_FILE_ID_SHORT);
 
@@ -369,7 +377,7 @@ public abstract class SubmodelRepositorySubmodelHTTPTestSuite {
 	@Test
 	public void getFile() throws FileNotFoundException, IOException, ParseException {
 		String fileName = DummySubmodelFactory.FILE_NAME;
-		String expectedFileName = Base64UrlEncodedIdentifier.encodeIdentifier(DummySubmodelFactory.SUBMODEL_FOR_FILE_TEST) + "-" + DummySubmodelFactory.SUBMODEL_ELEMENT_FILE_ID_SHORT + "-" + fileName;
+		String expectedFileName = fileName;
 		
 		byte[] expectedFile = readBytesFromClasspath(fileName);
 		
@@ -445,11 +453,13 @@ public abstract class SubmodelRepositorySubmodelHTTPTestSuite {
 	}
 
 	private CloseableHttpResponse uploadFileToSubmodelElement(String submodelId, String submodelElementIdShort) throws IOException {
-		CloseableHttpClient client = HttpClients.createDefault();
-
 		String fileName = DummySubmodelFactory.FILE_NAME;
+		return uploadFileToSubmodelElement(submodelId, submodelElementIdShort, fileName);
+	}
 
-		java.io.File file = ResourceUtils.getFile("classpath:" + fileName);
+	private CloseableHttpResponse uploadFileToSubmodelElement(String submodelId, String submodelElementIdShort, String fileName) throws IOException {
+		CloseableHttpClient client = HttpClients.createDefault();
+		java.io.File file = ResourceUtils.getFile("classpath:" + DummySubmodelFactory.FILE_NAME);
 
 		HttpPut putRequest = createPutRequestWithFile(submodelId, submodelElementIdShort, fileName, file);
 
