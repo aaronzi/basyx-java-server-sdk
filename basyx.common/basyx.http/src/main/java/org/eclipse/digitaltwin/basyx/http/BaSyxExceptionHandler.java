@@ -88,6 +88,11 @@ public class BaSyxExceptionHandler {
 	public ResponseEntity<Object> handleIllegalArgumentException(IllegalArgumentException exception) {
 		return buildResponse(exception.getMessage(), HttpStatus.BAD_REQUEST, exception);
 	}
+
+	@ExceptionHandler(SecurityException.class)
+	public ResponseEntity<Object> handleSecurityException(SecurityException exception) {
+		return buildResponse(exception.getMessage(), HttpStatus.BAD_REQUEST, exception);
+	}
 	
 	@ExceptionHandler(IdentificationMismatchException.class)
 	public ResponseEntity<Object> handleIdMismatchException(IdentificationMismatchException exception) {

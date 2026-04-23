@@ -32,7 +32,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
+import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.io.IOUtils;
 import org.eclipse.digitaltwin.basyx.core.exceptions.FileDoesNotExistException;
@@ -50,13 +53,18 @@ import org.springframework.stereotype.Component;
 public class InMemoryFileRepository implements FileRepository {
 
 	private static final String TEMP_DIRECTORY_PREFIX = "basyx-temp";
-	private String tmpDirectory = getTemporaryDirectoryPath();
+	private final Path tmpDirectoryPath = Paths.get(getTemporaryDirectoryPath()).toAbsolutePath().normalize();
+	private final Map<String, String> originalFileNames = new ConcurrentHashMap<>();
 
 	@Override
 	public String save(FileMetadata fileMetadata) throws FileHandlingException {
-		String filePath = createFilePath(fileMetadata.getFileName());
+		Path targetPath = createFilePath(fileMetadata.getFileName());
+		String filePath = targetPath.toString();
 
-		java.io.File targetFile = new java.io.File(filePath);
+		if (Files.exists(targetPath))
+			throw new FileHandlingException("File '%s' already exists.".formatted(filePath));
+
+		java.io.File targetFile = targetPath.toFile();
 
 		try (FileOutputStream outStream = new FileOutputStream(targetFile)) {
 			IOUtils.copy(fileMetadata.getFileContent(), outStream);
@@ -65,15 +73,28 @@ public class InMemoryFileRepository implements FileRepository {
 		}
 
 		fileMetadata.setFileName(filePath);
+		String originalFileName = fileMetadata.getOriginalFileName();
+
+		if (originalFileName == null || originalFileName.isBlank())
+			originalFileName = targetPath.getFileName().toString();
+
+		originalFileNames.put(filePath, originalFileName);
 
 		return filePath;
 	}
 
 	@Override
 	public InputStream find(String fileId) throws FileDoesNotExistException {
+		Path filePath;
 
 		try {
-			return new FileInputStream(fileId);
+			filePath = resolveStoredFilePath(fileId);
+		} catch (IllegalArgumentException | SecurityException e) {
+			throw new FileDoesNotExistException();
+		}
+
+		try {
+			return new FileInputStream(filePath.toFile());
 		} catch (FileNotFoundException e) {
 			throw new FileDoesNotExistException();
 		}
@@ -81,34 +102,53 @@ public class InMemoryFileRepository implements FileRepository {
 
 	@Override
 	public void delete(String fileId) throws FileDoesNotExistException {
+		Path filePath;
 
-		if (!exists(fileId))
+		try {
+			filePath = resolveStoredFilePath(fileId);
+		} catch (IllegalArgumentException | SecurityException e) {
+			throw new FileDoesNotExistException();
+		}
+
+		if (!Files.exists(filePath))
 			throw new FileDoesNotExistException();
 
-		java.io.File tmpFile = new java.io.File(fileId);
+		java.io.File tmpFile = filePath.toFile();
 
 		tmpFile.delete();
+		originalFileNames.remove(filePath.toString());
 	}
 
 	@Override
 	public boolean exists(String fileId) {
 		if(fileId == null) return false;
 
-		if (fileId.isBlank() || !isFilePathValid(fileId))
+		if (fileId.isBlank())
 			return false;
 
-		return Files.exists(Paths.get(fileId));
-	}
-
-	private boolean isFilePathValid(String filePath) {
+		Path filePath;
 
 		try {
-			Paths.get(filePath);
-		} catch (InvalidPathException | NullPointerException ex) {
+			filePath = resolveStoredFilePath(fileId);
+		} catch (IllegalArgumentException | SecurityException e) {
 			return false;
 		}
 
-		return true;
+		return Files.exists(filePath);
+	}
+
+	@Override
+	public String getOriginalFileName(String fileId) {
+		Path filePath;
+
+		try {
+			filePath = resolveStoredFilePath(fileId);
+		} catch (IllegalArgumentException | SecurityException e) {
+			return fileId;
+		}
+
+		String key = filePath.toString();
+		return originalFileNames.getOrDefault(key, filePath.getFileName().toString());
 	}
 
 	private String getTemporaryDirectoryPath() {
@@ -123,8 +163,42 @@ public class InMemoryFileRepository implements FileRepository {
 		return tempDirectoryPath;
 	}
 
-	private String createFilePath(String fileName) {
-		return tmpDirectory + "/" + fileName;
+	private Path createFilePath(String fileName) {
+		if (fileName == null || fileName.isBlank())
+			throw new IllegalArgumentException("File name must not be null or blank.");
+
+		Path resolvedPath;
+
+		try {
+			resolvedPath = tmpDirectoryPath.resolve(fileName).normalize();
+		} catch (InvalidPathException e) {
+			throw new IllegalArgumentException("Invalid file name '%s'.".formatted(fileName), e);
+		}
+
+		if (!resolvedPath.startsWith(tmpDirectoryPath))
+			throw new SecurityException("Path traversal attempt detected.");
+
+		return resolvedPath;
+	}
+
+	private Path resolveStoredFilePath(String fileId) {
+		Path filePath;
+
+		try {
+			filePath = Paths.get(fileId);
+		} catch (InvalidPathException e) {
+			throw new IllegalArgumentException("Invalid file id '%s'.".formatted(fileId), e);
+		}
+
+		if (!filePath.isAbsolute())
+			filePath = tmpDirectoryPath.resolve(filePath);
+
+		filePath = filePath.normalize();
+
+		if (!filePath.startsWith(tmpDirectoryPath))
+			throw new SecurityException("Path traversal attempt detected.");
+
+		return filePath;
 	}
 
 }

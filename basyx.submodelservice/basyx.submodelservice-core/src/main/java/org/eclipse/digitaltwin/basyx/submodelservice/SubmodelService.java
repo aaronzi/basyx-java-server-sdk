@@ -196,4 +196,15 @@ public interface SubmodelService {
 	 * @return File InputStream
 	 */
 	public InputStream getFileByFilePath(String filePath);
+
+	/**
+	 * Resolves the original logical filename for a file submodel element.
+	 *
+	 * @param idShortPath
+	 *            the IdShort path of the file element
+	 * @return original filename to expose to clients
+	 */
+	public default String getOriginalFileNameByPath(String idShortPath) {
+		return getFileByPath(idShortPath).getName();
+	}
 }

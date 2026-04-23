@@ -230,9 +230,10 @@ public class SubmodelRepositoryApiHTTPController implements SubmodelRepositoryHT
 
 	@Override
 	public ResponseEntity<Resource> getFileByPath(Base64UrlEncodedIdentifier submodelIdentifier, String idShortPath) {
-		Resource resource = new FileSystemResource(repository.getFileByPathSubmodel(submodelIdentifier.getIdentifier(), idShortPath));
+		java.io.File file = repository.getFileByPathSubmodel(submodelIdentifier.getIdentifier(), idShortPath);
+		Resource resource = new FileSystemResource(file);
 
-	    String fileName = resource.getFilename();
+		String fileName = repository.getOriginalFileNameByPath(submodelIdentifier.getIdentifier(), idShortPath);
 		
 	    return ResponseEntity.ok()
 	            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")

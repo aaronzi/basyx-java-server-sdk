@@ -297,4 +297,17 @@ public interface SubmodelRepository {
 	 * @return File InputStream
 	 */
 	public InputStream getFileByFilePath(String submodelId, String filePath);
+
+	/**
+	 * Resolves the original logical filename for a file submodel element.
+	 *
+	 * @param submodelId
+	 *            the Submodel id
+	 * @param idShortPath
+	 *            the IdShort path of the file element
+	 * @return original filename to expose to clients
+	 */
+	public default String getOriginalFileNameByPath(String submodelId, String idShortPath) {
+		return getFileByPathSubmodel(submodelId, idShortPath).getName();
+	}
 }

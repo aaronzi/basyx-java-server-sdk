@@ -38,12 +38,18 @@ import java.io.InputStream;
 public class FileMetadata {
 
 	private String fileName;
+	private String originalFileName;
 	private String contentType;
 	private InputStream fileContent;
 
 	public FileMetadata(String fileName, String contentType, InputStream fileContent) {
+		this(fileName, fileName, contentType, fileContent);
+	}
+
+	public FileMetadata(String fileName, String originalFileName, String contentType, InputStream fileContent) {
 		super();
 		this.fileName = fileName;
+		this.originalFileName = originalFileName;
 		this.contentType = contentType;
 		this.fileContent = fileContent;
 	}
@@ -54,6 +60,14 @@ public class FileMetadata {
 
 	public String getFileName() {
 		return fileName;
+	}
+
+	public void setOriginalFileName(String originalFileName) {
+		this.originalFileName = originalFileName;
+	}
+
+	public String getOriginalFileName() {
+		return originalFileName;
 	}
 
 	public void setContentType(String contentType) {

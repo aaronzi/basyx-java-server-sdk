@@ -72,4 +72,14 @@ public interface FileRepository {
 	 */
 	public boolean exists(String fileId);
 
+	/**
+	 * Resolves the original logical filename that should be exposed to clients.
+	 * 
+	 * @param fileId
+	 * @return original filename or a fallback implementation-specific value
+	 */
+	public default String getOriginalFileName(String fileId) {
+		return fileId;
+	}
+
 }
